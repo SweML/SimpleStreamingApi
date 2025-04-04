@@ -14,6 +14,36 @@ public class StreamManager(ILoggerFactory loggerFactory)
         _logger.LogInformation("Creating stream for {streamerId}", streamerId);
         return _streams.GetOrAdd(streamerId, new StreamQueue<WebSocketChunk>(loggerFactory.CreateLogger<StreamQueue<WebSocketChunk>>()));
     }
+    
+    public IEnumerable<string> GetActiveStreamerIds() => _streams.Keys;
+
+    
+    public StreamQueue<WebSocketChunk>? GetStreamQueue(string streamerId)
+    {
+        _streams.TryGetValue(streamerId, out var queue);
+        return queue;
+    }
+    
+    public async Task BroadcastToViewers(string streamerId, WebSocketChunk chunk)
+    {
+        if (_clients.TryGetValue(streamerId, out var sockets))
+        {
+            foreach (var socket in sockets)
+            {
+                if (socket.State == WebSocketState.Open)
+                {
+                    try
+                    {
+                        await socket.SendAsync(chunk.Data, chunk.MessageType, chunk.EndOfMessage, CancellationToken.None);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to send chunk to viewer.");
+                    }
+                }
+            }
+        }
+    }
 
     public bool ConnectViewerToStream(string streamerId, WebSocket viewer)
     {
@@ -24,43 +54,6 @@ public class StreamManager(ILoggerFactory loggerFactory)
         var viewers = _clients.GetOrAdd(streamerId, _ => new ConcurrentBag<WebSocket>());
         viewers.Add(viewer);
         return true;
-    }
-
-    public async Task StreamFeed(string streamerId)
-    {
-        _logger.LogInformation("StreamFeed");
-
-        if (!_streams.TryGetValue(streamerId, out var streamQueue))
-        {
-            _logger.LogWarning("No stream found for {StreamerId}", streamerId);
-            return;
-        }
-
-        while (await streamQueue.HasNextItemAsync())
-        {
-            var chunk = await streamQueue.ReadNextItemAsync();
-
-            if (_clients.TryGetValue(streamerId, out var sockets))
-            {
-                foreach (var socket in sockets)
-                {
-                    if (socket.State == WebSocketState.Open)
-                    {
-                        try
-                        {
-                            await socket.SendAsync(chunk.Data, chunk.MessageType, chunk.EndOfMessage, CancellationToken.None);
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogWarning(ex, "Failed to send chunk to a viewer.");
-                            // Optionally mark the socket for removal
-                        }
-                    }
-                }
-            }
-        }
-
-        _logger.LogInformation("StreamFeed ended for {StreamerId}", streamerId);
     }
 
     public void RemoveStream(string streamerId)

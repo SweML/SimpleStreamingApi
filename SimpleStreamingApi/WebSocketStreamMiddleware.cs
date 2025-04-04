@@ -3,7 +3,7 @@ using Matroska;
 
 namespace SimpleStreamingApi;
 
-public class WebSocketMiddleware(RequestDelegate next, StreamManager streamManager, ILogger<WebSocketMiddleware> logger)
+public class WebSocketStreamMiddleware(RequestDelegate next, StreamManager streamManager, ILogger<WebSocketStreamMiddleware> logger)
 {
     
     public async Task InvokeAsync(HttpContext context)
@@ -23,7 +23,6 @@ public class WebSocketMiddleware(RequestDelegate next, StreamManager streamManag
             {
                 var streamerId = query["streamer"]!;
                 var queue = streamManager.GetOrCreateStream(streamerId);
-                _ = Task.Run(() => streamManager.StreamFeed(streamerId));
                 await HandleStreamer(webSocket, queue, streamerId).ConfigureAwait(false);
             }
             else if (query.ContainsKey("viewer"))
@@ -93,20 +92,5 @@ public class WebSocketMiddleware(RequestDelegate next, StreamManager streamManag
         streamManager.RemoveStream(streamerId);
 
         logger.LogInformation("Streamer WebSocket closed");
-    }
-
-
-    private async Task HandleViewer(WebSocket socket, StreamQueue<WebSocketChunk> queue)
-    {
-        logger.LogInformation("Handle viewer received");
-        while (socket.State == WebSocketState.Open && await queue.HasNextItemAsync())
-        {
-            var chunk = await queue.ReadNextItemAsync();
-            
-            await socket.SendAsync(chunk.Data, chunk.MessageType, chunk.EndOfMessage, CancellationToken.None);
-        }
-        logger.LogInformation("Handle viewer done");
-        
-        await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Done watching", CancellationToken.None);
     }
 }
