@@ -1,4 +1,6 @@
-﻿namespace SimpleStreamingApi;
+﻿using SimpleStreamingApi.Managers;
+
+namespace SimpleStreamingApi.Services;
 
 public class BroadcastService(StreamManager streamManager, ILogger<BroadcastService> logger)
     : BackgroundService

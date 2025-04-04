@@ -1,6 +1,6 @@
 ﻿using System.Net.WebSockets;
 
-namespace SimpleStreamingApi;
+namespace SimpleStreamingApi.Models;
 
 public struct WebSocketChunk
 {

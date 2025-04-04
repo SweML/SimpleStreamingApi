@@ -1,24 +1,20 @@
-﻿using System.Text;
-using System.Text.Unicode;
-using System.Threading.Channels;
-using Matroska;
+﻿using System.Threading.Channels;
 
-namespace SimpleStreamingApi;
+namespace SimpleStreamingApi.Services;
 
-public class StreamQueue<T>(ILogger<StreamQueue<T>> logger)
+public class StreamQueueService<T>(ILogger<StreamQueueService<T>> logger)
 {
-    private readonly ILogger<StreamQueue<T>> _logger = logger;
     private readonly Channel<T> _channel = Channel.CreateUnbounded<T>();
 
     public async Task WriteNextItemAsync(T item)
     {
-        _logger.LogTrace("WriteNextByteSegment");
+        logger.LogTrace("WriteNextByteSegment");
         await _channel.Writer.WriteAsync(item);
     }
 
     public async Task<T> ReadNextItemAsync()
     {
-        _logger.LogTrace("ReadNextByteSegment");
+        logger.LogTrace("ReadNextByteSegment");
         return await _channel.Reader.ReadAsync();
     }
 

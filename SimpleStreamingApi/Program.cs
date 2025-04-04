@@ -1,4 +1,7 @@
 using SimpleStreamingApi;
+using SimpleStreamingApi.Managers;
+using SimpleStreamingApi.Middleware;
+using SimpleStreamingApi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -10,10 +13,7 @@ var app = builder.Build();
 
 app.UseHttpsRedirection();
 
-app.UseWebSockets(new WebSocketOptions()
-{
-    KeepAliveInterval = TimeSpan.FromMinutes(2)
-});
+app.UseWebSockets();
 
 app.UseMiddleware<WebSocketStreamMiddleware>();
 

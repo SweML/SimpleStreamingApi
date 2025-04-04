@@ -1,7 +1,10 @@
 ﻿using System.Net.WebSockets;
-using Matroska;
+using SimpleStreamingApi.Extensions;
+using SimpleStreamingApi.Managers;
+using SimpleStreamingApi.Models;
+using SimpleStreamingApi.Services;
 
-namespace SimpleStreamingApi;
+namespace SimpleStreamingApi.Middleware;
 
 public class WebSocketStreamMiddleware(RequestDelegate next, StreamManager streamManager, ILogger<WebSocketStreamMiddleware> logger)
 {
@@ -21,13 +24,13 @@ public class WebSocketStreamMiddleware(RequestDelegate next, StreamManager strea
 
             if (query.ContainsKey("streamer"))
             {
-                var streamerId = query["streamer"]!;
+                var streamerId = query["streamer"].ToString();
                 var queue = streamManager.GetOrCreateStream(streamerId);
                 await HandleStreamer(webSocket, queue, streamerId).ConfigureAwait(false);
             }
             else if (query.ContainsKey("viewer"))
             {
-                var streamerId = query["viewer"]!;
+                var streamerId = query["viewer"].ToString();
                 if (streamManager.ConnectViewerToStream(streamerId, webSocket))
                 {
                     await WaitForSocket(webSocket);
@@ -51,9 +54,10 @@ public class WebSocketStreamMiddleware(RequestDelegate next, StreamManager strea
         {
             await Task.Delay(100);
         }
+        logger.LogInformation("Websocket connection closed.");
     }
 
-    private async Task HandleStreamer(WebSocket socket, StreamQueue<WebSocketChunk> queue, string streamerId)
+    private async Task HandleStreamer(WebSocket socket, StreamQueueService<WebSocketChunk> queueService, string streamerId)
     {
         var buffer = new byte[1024 * 1024];
         try
@@ -75,21 +79,20 @@ public class WebSocketStreamMiddleware(RequestDelegate next, StreamManager strea
                 
                 logger.LogTrace("Received segment: {Length} bytes", result.Count);
 
-                await queue.WriteNextItemAsync(chunk);
+                await queueService.WriteNextItemAsync(chunk);
             }
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Unhandled exception in HandleStreamer");
         }
-        // Close the socket
+        
         if (socket.State != WebSocketState.Closed)
         {
             await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Streamer done", CancellationToken.None);
         }
 
-        // Optional: Remove stream and viewers
-        streamManager.RemoveStream(streamerId);
+        await streamManager.RemoveStream(streamerId);
 
         logger.LogInformation("Streamer WebSocket closed");
     }

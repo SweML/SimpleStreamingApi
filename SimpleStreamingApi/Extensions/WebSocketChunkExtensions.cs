@@ -1,10 +1,10 @@
 ﻿using System.Net.WebSockets;
+using SimpleStreamingApi.Models;
 
-namespace SimpleStreamingApi;
+namespace SimpleStreamingApi.Extensions;
 
 public static class WebSocketChunkExtensions
 {
-
     public static WebSocketChunk ToWebSocketChunk(this byte[] bytes, WebSocketReceiveResult result)
     {
         return new WebSocketChunk()

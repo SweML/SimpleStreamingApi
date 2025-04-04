@@ -1,24 +1,26 @@
 ﻿using System.Collections.Concurrent;
 using System.Net.WebSockets;
+using SimpleStreamingApi.Models;
+using SimpleStreamingApi.Services;
 
-namespace SimpleStreamingApi;
+namespace SimpleStreamingApi.Managers;
 
 public class StreamManager(ILoggerFactory loggerFactory)
 {
-    private readonly ConcurrentDictionary<string, StreamQueue<WebSocketChunk>> _streams = new();
+    private readonly ConcurrentDictionary<string, StreamQueueService<WebSocketChunk>> _streams = new();
     private readonly ConcurrentDictionary<string, ConcurrentBag<WebSocket>> _clients = new();
     private readonly ILogger<StreamManager> _logger = loggerFactory.CreateLogger<StreamManager>();
     
-    public StreamQueue<WebSocketChunk> GetOrCreateStream(string streamerId)
+    public StreamQueueService<WebSocketChunk> GetOrCreateStream(string streamerId)
     {
         _logger.LogInformation("Creating stream for {streamerId}", streamerId);
-        return _streams.GetOrAdd(streamerId, new StreamQueue<WebSocketChunk>(loggerFactory.CreateLogger<StreamQueue<WebSocketChunk>>()));
+        return _streams.GetOrAdd(streamerId, new StreamQueueService<WebSocketChunk>(loggerFactory.CreateLogger<StreamQueueService<WebSocketChunk>>()));
     }
     
     public IEnumerable<string> GetActiveStreamerIds() => _streams.Keys;
 
     
-    public StreamQueue<WebSocketChunk>? GetStreamQueue(string streamerId)
+    public StreamQueueService<WebSocketChunk>? GetStreamQueue(string streamerId)
     {
         _streams.TryGetValue(streamerId, out var queue);
         return queue;
@@ -56,10 +58,24 @@ public class StreamManager(ILoggerFactory loggerFactory)
         return true;
     }
 
-    public void RemoveStream(string streamerId)
+    public async Task RemoveStream(string streamerId)
     {
         _streams.TryRemove(streamerId, out _);
-        _clients.TryRemove(streamerId, out _);
+        _clients.TryRemove(streamerId, out var bag);
         _logger.LogInformation("Removed stream and clients for {streamerId}", streamerId);
+
+        if (bag == null)
+            return;
+        
+        foreach (var client in bag)
+        {
+            if (client.State == WebSocketState.Open)
+            {
+                await client.CloseAsync(WebSocketCloseStatus.NormalClosure, string.Empty, CancellationToken.None);
+            }
+        }
+        {
+            
+        }
     }
 }
