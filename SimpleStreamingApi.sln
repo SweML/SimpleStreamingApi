@@ -1,6 +1,6 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForwardingApi", "VideoForwardingApi\VideoForwardingApi.csproj", "{8EAFA456-FFAB-4629-B5B2-E53283520B5F}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SimpleStreamingApi", "SimpleStreamingApi\SimpleStreamingApi.csproj", "{8EAFA456-FFAB-4629-B5B2-E53283520B5F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

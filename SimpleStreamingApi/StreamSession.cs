@@ -1,27 +1,23 @@
-﻿using System;
-using System.Net.WebSockets;
-using System.Runtime.CompilerServices;
-using System.Threading;
-using System.Threading.Tasks;
+﻿using System.Net.WebSockets;
 
-namespace VideoForwardingApi;
+namespace SimpleStreamingApi;
 
 public class StreamSession
 {
     private WebSocket? streamer;
-    private WebSocket? watcher;
+    private WebSocket? viewer;
     private int MaxByteSize = 0;
     private byte[] Header;
     private bool HeaderStored = false;
 
-    public async Task ConnectWatcher(WebSocket watcher)
+    public async Task ConnectViewer(WebSocket viewer)
     {
-        this.watcher = watcher;
+        this.viewer = viewer;
 
-        if (HeaderStored && watcher?.State == WebSocketState.Open)
+        if (HeaderStored && viewer?.State == WebSocketState.Open)
         {
             Console.WriteLine("Sending header");
-            await watcher.SendAsync(
+            await viewer.SendAsync(
                 new ArraySegment<byte>(Header),  // Send the data array, not the buffer
                 WebSocketMessageType.Binary,
                 false,
@@ -63,10 +59,9 @@ public class StreamSession
                         Console.WriteLine($"Biggest received video chunk size is: {MaxByteSize} bytes");
                     }
 
-                    // Send the received data to the watcher
-                    if (watcher?.State == WebSocketState.Open)
+                    if (viewer?.State == WebSocketState.Open)
                     {
-                        await watcher.SendAsync(
+                        await viewer.SendAsync(
                             new ArraySegment<byte>(data),  // Send the data array, not the buffer
                             result.MessageType,
                             result.EndOfMessage,
@@ -91,7 +86,7 @@ public class StreamSession
         if (streamer != null && streamer.State != WebSocketState.Closed)
             await streamer.CloseAsync(WebSocketCloseStatus.NormalClosure, "Streaming ended", CancellationToken.None);
         
-        if (watcher != null && watcher.State != WebSocketState.Closed)
-            await watcher.CloseAsync(WebSocketCloseStatus.NormalClosure, "Streaming ended", CancellationToken.None);
+        if (viewer != null && viewer.State != WebSocketState.Closed)
+            await viewer.CloseAsync(WebSocketCloseStatus.NormalClosure, "Streaming ended", CancellationToken.None);
     }
 }
